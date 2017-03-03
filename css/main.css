@@ -1,0 +1,13 @@
+th {
+	border : thin solid black;
+	padding : 2px;
+}
+
+td {
+	border : thin solid black;
+	padding : 2px;
+}
+
+table{
+	border : thin solid black;
+}
