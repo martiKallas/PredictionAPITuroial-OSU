@@ -11,3 +11,11 @@ td {
 table{
 	border : thin solid black;
 }
+
+pre{
+	 background: #F0F0F0;
+}
+
+code{
+	 background: #F0F0F0;
+}
