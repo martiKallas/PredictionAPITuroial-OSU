@@ -3,6 +3,17 @@
 	<head>
 		<meta charset='UTF-8'>
 		<link rel='stylesheet' type='text/css' href='css/main.css'>
+		<link rel='stylesheet' href='styles/default.css'>
+		<script src='highlight.pack.js'></script>
+		<script>hljs.initHighlightingOnLoad();</script>
+		<script>window.onload = function (){
+			var allPre, i, j;
+			allPre = document.getElementsByTagName("pre");
+			for (i = 0, j = allPre.length; i < j; i++){
+				hljs.highlightBlock(allPre[i]);
+			}
+		}
+		</script>
 	</head>
 	<body>
 		<div id='intro'>
@@ -31,10 +42,10 @@
 				<li>Go to <a href='https://cloud.google.com/'> Google Cloud Platform </a> and sign up for the free trial. </li>
 				<li>Create a new project by selecting the drop-down from the title bar and give it a unique name. For example, mine is named CS290-PredictionAPITutorial.</li>
 				<li>Enable the Prediction API for your project. Do this by selecting your project, going to the API Manager on the left-hand drop-down menu, and search for the Prediction API.</li>
-				<img src='SelectAPIManager.png' style='width:800px;height:323px;'>
+				<img src='images/SelectAPIManager.png' style='width:800px;height:323px;'>
 				<p> </p>
 				<li>Next, go to the Credentials page under API Manager. Create an API key. </li>
-				<img src='Credentials.png' style='width:800px;height:298px;'>
+				<img src='images/Credentials.png' style='width:800px;height:298px;'>
 				<p> </p>
 				<li>From the same Credentials page, create a service account key. I selected the JSON version. Save the generated key file in a safe place, and do not use it in client-side pages.</li>
 				<li>Finally, from the left-hand drop-down menu, go to Storage, and create a bucket. This will be used to store data for training the model.</li>
@@ -57,7 +68,7 @@
 			<p>A JWT is composed as shown below: </p>
 			<code> {Header}.{Claims Set}.{Signature} </code>
 			<p> The header contains information on the encryption method used to generate the signature, and the type of token. A correct token header for contacting the OAuth servers looks like the one below: </p>
-			<code>{'alg':'RS256','typ':'JWT'}; </code>
+			<code class='JSON'>{'alg':'RS256','typ':'JWT'}; </code>
 			<p> The 'alg' property lets us know how the signature of the token is encoded. In this case it is RSA256 SHA-256 (Represented by 'RS256'). The 'typ' property simply identifies that the token is a JSON Web Token.</p>
 			<p> The claim set of the token contains information relevant to the type of authorization requested and the individual requesting the authorization. A claim set is shown below for the Prediction API: </p>
 			<pre>
@@ -72,7 +83,7 @@
 			<p> The 'aud' property is short for audience. This identifies the entity that is receiving the token. In our case, that is Google's OAuth server.</p>
 			<p> The remaining property names are the expiration time ('exp') and issuing time ('iat') for the requested token. We will fill these in later when the access token is actually requested. </p>
 			<p> The signature portion of the JWT is the combined data of the header and claims set encoded with the correct encryption, using your service account key as a seed. The header, claims set and signature are concatenated with '.'s (see the example at the very beginning of this section). The final string is then Base64 encoded. To accomplish all of this, I used <a href='https://github.com/kjur/jsrsasign/wiki/Tutorial-for-JWT-generation'>Kenji Urushima's library</a> for creating JWTs. You will need the jrsasign-latest-all-min.js file to create a JWT. You can also find more libraries at <a href='https://jwt.io'>jwt.io</a>. Now, let's get to creating a JWT. Below is the code I use:</p>
-			<pre>
+			<pre class='js'>
 var jwtHeader = {'alg':'RS256','typ':'JWT'};
 var jwtClaim = {
 	'iss': <b>serviceAccountEmail</b>,
@@ -181,7 +192,7 @@ function trainModel(){
  'storageDataLocation' : 'cs290-predictionapitutorial/trainingData.csv'}
 			</pre>	
 			<p> Next, a request is opened. The projectID is the numerical number assigned to your Cloud Platform Project. To find this, go to your Google Cloud Console, select the desired project, and, from the 'Utilities and more' dropdown, select 'Project Settings'. The Project number will be in the location pictured below. The key variable is the API key created for your particular project. This is found in the API Manager -> Credentials menu.</p>
-			<img src='ProjectNumber.png' alt='Project Number' style='width:800px;height:323px;'>
+			<img src='images/ProjectNumber.png' alt='Project Number' style='width:800px;height:323px;'>
 			<p> Next we have to set the header. This is where we include our OAuth access token. Once the header is correctly set, the only thing left to do is verify that the response is OK. A correct response should look like:</p>
 			<pre>
 {'id': 'nflSpreadPredictor',
@@ -249,6 +260,7 @@ function queryAPI(){
 	
 	var payload = {'input':{'csvInstance': csv}};
 	req.send(JSON.stringify(payload));
+}
 			</pre>
 			<p> The Prediction API is flexible enough to realize that 24 and "24" are the same. This is helpful if you want to automate pulling data from a form for querying the API. The API will also fill in blank spaces as 0 or "". Although this flexibility can be nice, I was able to get a successful response from the API by replacing a string value ("Home") with 456 and by replacing a numeric value with "Desert". Since neither of these threw an error, it seems that it would be very easy to mix up data and still get a "successful" response from the API server. This is something to watch out for. A successful response for the regression model will look like: </p>
 			<pre>
@@ -278,13 +290,13 @@ Authorization: Bearer <b>access_token</b>
 			<h1>Putting it All Together</h1>
 			<p> Now we know how to create a Google Cloud Account with the correct credentials, authorize access to the API, and use the most common API functions. This should be enough to get started, and I want to look a little closer at the overall application of these tools. Let's say I want to flesh out my NFL prediction model and host a site that has current predictions for the upcoming week. We know that the API keys and access tokens should stay hidden from the end user, so I will need to keep those on a server. The server will need to generate some of the content for the end user based on the current week's predictions. </p>
 			<p> I also want to keep track of my current access tokens and when they time out. I only need one access token at a time since every API request can use the same token. Further, I don't want to constantly refresh my access token since each call to the API costs money, and Google has daily limits for certain types of tokens and calls (As an aside I couldn't find a hard limit for the OAuth token in this guide, but I might have missed it). Therefore, I want to check the state of my access token only when an API request is needed. In pseudo-code that might look like this: </p>
-		       <pre>
+		       <pre class='nohighlight'>
 Begin API Request //This applies to all API requests (train, predict, update...)
 	If the access token either doesn't exist or has timed out, create a new token
 	Continue with the query once a new token is created
 		       </pre>
 		       <p> For those that don't know, the NFL runs games on Thursday, Sunday morning, Sunday afternoon, Sunday evening and Monday night. For my site I want the most accurate predictions possible. Therefore, I want to update my model after each set of games and update my predictions for the following games. My pseudo-code for that would be: </p>
-		       <pre>
+		       <pre class='nohighlight'>
 After Thursday games:
 	Gather data //could use another API here
 	Update the model
@@ -410,6 +422,8 @@ After Thursday games:
 			<a href='https://en.wikipedia.org/wiki/Machine_learning'>https://en.wikipedia.org/wiki/Machine_learning</a><br>
 			<a href='https://en.wikipedia.org/wiki/Regression_analysis'>https://en.wikipedia.org/wiki/Regression_analysis</a><br>
 			<a href='http://www.pro-football-reference.com/'>http://www.pro-football-reference.com/</a><br>
+			<p> For syntax highlighting: </p>
+			<a href='https://highlightjs.org/'>https://highlightjs.org/</a><br>
 		</div>
 	</body>
 </html>
